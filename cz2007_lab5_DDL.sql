@@ -280,7 +280,7 @@ AS
 CREATE VIEW StakeholderPerson AS
 SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.domain
 FROM Stakeholder AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
-  JOIN Address A ON P.person_address = A.person_address;
+  JOIN Address A ON P.person_address = A.person_address; 
 
 --CREATE TRIGGER InsertStakeholder
 --ON StakeholderPerson
@@ -289,6 +289,59 @@ FROM Stakeholder AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
 --  INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
 --  INSERT INTO Stakeholder SELECT i.person_ID, i.domain FROM inserted i;
 --END;
+
+
+--//tim start
+
+--CREATE VIEW StakeholderPerson AS
+--SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.domain
+--FROM Stakeholder AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+--  JOIN Address A ON P.person_address = A.person_address;
+
+
+--CREATE VIEW AdminStaffPerson AS
+--SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.staff_ID, S.position, S.date_hired, S.department
+--FROM Administrative_Staff AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+--  JOIN Address A ON P.person_address = A.person_address;
+
+
+--CREATE VIEW TechStaffPerson AS
+--SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.staff_ID, S.position, S.date_hired, S.specialisation, S.lab_name, S.school_name
+--FROM Technical_Staff AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+--  JOIN Address A ON P.person_address = A.person_address;
+
+
+--CREATE VIEW UndergradPerson AS
+--SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.student_ID, S.admission_date, S.major, S.minor, S.GPA
+--FROM Undergraduate AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+--  JOIN Address A ON P.person_address = A.person_address;
+
+
+--CREATE VIEW GradPerson AS
+--SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.student_ID, S.admission_date, S.major, S.minor, S.grad_date
+--FROM Graduate AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+--  JOIN Address A ON P.person_address = A.person_address;
+
+
+--CREATE VIEW ProfessorPerson AS
+--SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.specialisation
+--FROM Professor AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+--  JOIN Address A ON P.person_address = A.person_address;
+
+
+--CREATE VIEW ResearchLab AS
+--SELECT P.lab_name, P.school_name, P.location, S.type
+--FROM Research_Lab AS S JOIN Laboratory AS P ON S.Rlab_name = P.lab_name;
+
+
+--CREATE VIEW TeachingLab AS
+--SELECT P.lab_name, P.school_name, P.location, S.purpose
+--FROM Teaching_Lab AS S JOIN Laboratory AS P ON S.Tlab_name = P.lab_name;
+
+
+
+
+--//tim end
 
 '''
 CREATE TRIGGER InsertAddress
@@ -334,3 +387,4 @@ INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, ema
 VALUES ('S6575203I', 'Jiahao Zheng', '179 River Valley Road #05-13 River Valley Building', '6563380863', 'jiaz0502@e.ntu.edu.sg', 'industry partners');
 
 SELECT * FROM StakeholderPerson;
+
