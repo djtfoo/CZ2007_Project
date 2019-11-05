@@ -164,6 +164,10 @@ FOREIGN KEY (person_ID) REFERENCES PersonInUni(person_ID)
 CHECK(major <> minor)
 );
 
+ALTER TABLE Student
+ADD CONSTRAINT student_ID CHECK(student_ID LIKE 'U________%' OR student_ID LIKE 'G________%');	--start with 'U' or 'G', followe by 8 characters
+
+
 CREATE TABLE Undergraduate
 (person_ID CHAR(9) PRIMARY KEY,
 GPA REAL CHECK(GPA IS NULL OR (GPA >= 0 AND GPA <= 5)), --GPA can be null, e.g. freshmen do not have GPA yet; e.g. AVG(GPA) will not be affected by freshmen
@@ -265,83 +269,165 @@ ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 --Create Triggers--
+--CREATE TRIGGER CityTrig
+--ON City
+--INSTEAD OF INSERT
+--AS
+--  IF NOT EXISTS(SELECT * FROM State WHERE state_name IN (SELECT state_name FROM inserted))
+--  BEGIN
+--    INSERT INTO State SELECT i.state_name FROM inserted i;
+--    INSERT INTO City SELECT i.city_name, i.state_name FROM inserted i;
+--  END;
+
 CREATE TRIGGER CityTrig
 ON City
 INSTEAD OF INSERT
 AS
+BEGIN
   IF NOT EXISTS(SELECT * FROM State WHERE state_name IN (SELECT state_name FROM inserted))
   BEGIN
     INSERT INTO State SELECT i.state_name FROM inserted i;
     INSERT INTO City SELECT i.city_name, i.state_name FROM inserted i;
   END;
+  ELSE
+    INSERT INTO City SELECT i.city_name, i.state_name FROM inserted i;
+END;
 
+CREATE TRIGGER courseSchoolTrig
+ON Course
+INSTEAD OF INSERT 
+AS
+BEGIN
+IF  ((SELECT school_name FROM inserted) NOT IN (SELECT School.school_name FROM School))
+BEGIN
+INSERT INTO School SELECT school_name FROM inserted;
+INSERT INTO Course SELECT * FROM inserted;
+END;
+ELSE
+INSERT INTO Course SELECT * FROM inserted;
+END;
 
 --Create Views (and Triggers) on Subclasses--
 CREATE VIEW StakeholderPerson AS
 SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.domain
 FROM Stakeholder AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
-  JOIN Address A ON P.person_address = A.person_address; 
+  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
 
---CREATE TRIGGER InsertStakeholder
---ON StakeholderPerson
---INSTEAD OF INSERT
---AS BEGIN
---  INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
---  INSERT INTO Stakeholder SELECT i.person_ID, i.domain FROM inserted i;
---END;
-
-
---//tim start
-
---CREATE VIEW StakeholderPerson AS
---SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.domain
---FROM Stakeholder AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
---  JOIN Address A ON P.person_address = A.person_address;
+CREATE TRIGGER InsertStakeholder
+ON StakeholderPerson
+INSTEAD OF INSERT
+AS BEGIN
+  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+	INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
+  INSERT INTO Stakeholder SELECT i.person_ID, i.domain FROM inserted i;
+END;
 
 
---CREATE VIEW AdminStaffPerson AS
---SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.staff_ID, S.position, S.date_hired, S.department
---FROM Administrative_Staff AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
---  JOIN Address A ON P.person_address = A.person_address;
+CREATE VIEW AdminStaffPerson AS
+SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, St.staff_ID, St.position, St.date_hired, S.department
+FROM Administrative_Staff AS S JOIN Staff St ON S.person_ID = St.person_ID JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+
+CREATE TRIGGER InsertAdminStaff
+ON AdminStaffPerson
+INSTEAD OF INSERT
+AS BEGIN
+  INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
+  INSERT INTO Staff SELECT i.person_ID, i.staff_ID, i.position, i.date_hired FROM inserted i;
+  INSERT INTO Administrative_Staff SELECT i.person_ID, i.department FROM inserted i;
+END;
 
 
---CREATE VIEW TechStaffPerson AS
---SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.staff_ID, S.position, S.date_hired, S.specialisation, S.lab_name, S.school_name
---FROM Technical_Staff AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
---  JOIN Address A ON P.person_address = A.person_address;
+CREATE VIEW TechStaffPerson AS
+SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, St.staff_ID, St.position, St.date_hired, S.specialisation, S.lab_name, S.school_name
+FROM Technical_Staff AS S JOIN Staff St ON S.person_ID = St.person_ID JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+
+CREATE TRIGGER InsertTechStaff
+ON TechStaffPerson
+INSTEAD OF INSERT
+AS BEGIN
+  INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
+  INSERT INTO Staff SELECT i.person_ID, i.staff_ID, i.position, i.date_hired FROM inserted i;
+  INSERT INTO Technical_Staff SELECT i.person_ID, i.specialisation, i.lab_name, i.school_name FROM inserted i;
+END;
 
 
---CREATE VIEW UndergradPerson AS
---SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.student_ID, S.admission_date, S.major, S.minor, S.GPA
---FROM Undergraduate AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
---  JOIN Address A ON P.person_address = A.person_address;
+CREATE VIEW UndergradPerson AS
+SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, St.student_ID, St.admission_date, St.major, St.minor, S.GPA
+FROM Undergraduate AS S JOIN Student St ON S.person_ID = St.person_ID JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+
+CREATE TRIGGER InsertUndergrad
+ON UndergradPerson
+INSTEAD OF INSERT
+AS BEGIN
+  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+    INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
+  IF NOT EXISTS(SELECT * FROM Student WHERE person_ID IN (SELECT person_ID FROM inserted))
+    INSERT INTO Student SELECT i.person_ID, i.student_ID, i.admission_date, i.major, i.minor FROM inserted i;
+  INSERT INTO Undergraduate SELECT i.person_ID, i.GPA FROM inserted i;
+END;
 
 
---CREATE VIEW GradPerson AS
---SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.student_ID, S.admission_date, S.major, S.minor, S.grad_date
---FROM Graduate AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
---  JOIN Address A ON P.person_address = A.person_address;
+CREATE VIEW GradPerson AS
+SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, St.student_ID, St.admission_date, St.major, St.minor, S.grad_date
+FROM Graduate AS S JOIN Student St ON S.person_ID = St.person_ID JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+
+CREATE TRIGGER InsertGrad
+ON GradPerson
+INSTEAD OF INSERT
+AS BEGIN
+  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+    INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
+  IF NOT EXISTS(SELECT * FROM Student WHERE person_ID IN (SELECT person_ID FROM inserted))
+    INSERT INTO Student SELECT i.person_ID, i.student_ID, i.admission_date, i.major, i.minor FROM inserted i;
+  INSERT INTO Graduate SELECT i.person_ID, i.grad_date FROM inserted i;
+END;
 
 
---CREATE VIEW ProfessorPerson AS
---SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.specialisation
---FROM Professor AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
---  JOIN Address A ON P.person_address = A.person_address;
+CREATE VIEW ProfessorPerson AS
+SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.specialisation
+FROM Professor AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+
+CREATE TRIGGER InsertProfessor
+ON ProfessorPerson
+INSTEAD OF INSERT
+AS BEGIN
+  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+    INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
+  INSERT INTO Professor SELECT i.person_ID, i.specialisation FROM inserted i;
+END;
 
 
---CREATE VIEW ResearchLab AS
---SELECT P.lab_name, P.school_name, P.location, S.type
---FROM Research_Lab AS S JOIN Laboratory AS P ON S.Rlab_name = P.lab_name;
+CREATE VIEW ResearchLab AS
+SELECT P.lab_name, P.school_name, P.location, S.type
+FROM Research_Lab AS S JOIN Laboratory AS P ON S.Rlab_name = P.lab_name;
+
+CREATE TRIGGER InsertResearchLab
+ON ResearchLab
+INSTEAD OF INSERT
+AS BEGIN
+  IF NOT EXISTS(SELECT lab_name, school_name FROM Laboratory INTERSECT (SELECT lab_name, school_name FROM inserted))
+    INSERT INTO Laboratory SELECT i.lab_name, i.school_name, i.location FROM inserted i;
+  INSERT INTO Research_Lab SELECT i.lab_name, i.school_name, i.type FROM inserted i;
+END;
 
 
---CREATE VIEW TeachingLab AS
---SELECT P.lab_name, P.school_name, P.location, S.purpose
---FROM Teaching_Lab AS S JOIN Laboratory AS P ON S.Tlab_name = P.lab_name;
+CREATE VIEW TeachingLab AS
+SELECT P.lab_name, P.school_name, P.location, S.purpose
+FROM Teaching_Lab AS S JOIN Laboratory AS P ON S.Tlab_name = P.lab_name;
 
-
-
-
---//tim end
+CREATE TRIGGER InsertTeachingLab
+ON TeachingLab
+INSTEAD OF INSERT
+AS BEGIN
+  IF NOT EXISTS(SELECT lab_name, school_name FROM Laboratory INTERSECT (SELECT lab_name, school_name FROM inserted))
+    INSERT INTO Laboratory SELECT i.lab_name, i.school_name, i.location FROM inserted i;
+  INSERT INTO Teaching_Lab SELECT i.lab_name, i.school_name, i.purpose FROM inserted i;
+END;
 
 '''
 CREATE TRIGGER InsertAddress
@@ -387,4 +473,3 @@ INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, ema
 VALUES ('S6575203I', 'Jiahao Zheng', '179 River Valley Road #05-13 River Valley Building', '6563380863', 'jiaz0502@e.ntu.edu.sg', 'industry partners');
 
 SELECT * FROM StakeholderPerson;
-
