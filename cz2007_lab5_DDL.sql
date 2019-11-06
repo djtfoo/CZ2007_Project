@@ -248,11 +248,13 @@ professor_person_ID CHAR(9),
 graduate_person_ID CHAR(9),
 
 PRIMARY KEY (topic, professor_person_ID, graduate_person_ID),
-FOREIGN KEY (professor_person_ID) REFERENCES Professor(person_ID)
-  ON DELETE CASCADE ON UPDATE CASCADE,
-FOREIGN KEY (graduate_person_ID) REFERENCES Graduate(person_ID)
-  ON DELETE CASCADE ON UPDATE CASCADE
+--FOREIGN KEY (professor_person_ID) REFERENCES Professor(person_ID),	--use trigger to implement 'ON DELETE CASCADE ON UPDATE CASCADE'
+--FOREIGN KEY (graduate_person_ID) REFERENCES Graduate(person_ID)		--use trigger to implement 'ON DELETE CASCADE ON UPDATE CASCADE'
 );
+
+SELECT * FROM sys.foreign_keys;
+ALTER TABLE Research
+DROP CONSTRAINT FK__Research__profes__5D95E53A
 
 CREATE TABLE Course_Taught
 (date_taught DATE,
@@ -260,13 +262,13 @@ student_person_ID CHAR(9),
 professor_person_ID CHAR(9), 
 course_ID CHAR(6),
 
-FOREIGN KEY (course_ID) REFERENCES Course(course_ID)
-ON UPDATE CASCADE, --cannot delete a course if it’s been taught before
-FOREIGN KEY (student_person_ID) REFERENCES PersonInUni(person_ID)
-ON DELETE CASCADE ON UPDATE CASCADE,
-FOREIGN KEY (professor_person_ID) REFERENCES PersonInUni(person_ID)
-ON DELETE CASCADE ON UPDATE CASCADE
+PRIMARY KEY(date_taught, student_person_ID, professor_person_ID, course_ID)
+--FOREIGN KEY (course_ID) REFERENCES Course(course_ID) ON UPDATE CASCADE, --cannot delete a course if it’s been taught before  --REMOVED
+--FOREIGN KEY (student_person_ID) REFERENCES Student(person_ID),	--use trigger to implement 'ON DELETE CASCADE ON UPDATE CASCADE'
+--FOREIGN KEY (professor_person_ID) REFERENCES Professor(person_ID)	--use trigger to implement 'ON DELETE CASCADE ON UPDATE CASCADE'
 );
+ALTER TABLE Course_Taught
+DROP CONSTRAINT FK__Course_Ta__cours__55009F39
 
 --Create Triggers--
 --CREATE TRIGGER CityTrig
@@ -307,6 +309,169 @@ ELSE
 INSERT INTO Course SELECT * FROM inserted;
 END;
 
+CREATE TRIGGER profExpTrig
+ON Prof_Has_Expertise
+INSTEAD OF INSERT
+AS
+BEGIN
+IF ((SELECT inserted.field FROM inserted) NOT IN (SELECT Field_Of_Expertise.field FROM Field_Of_Expertise))
+BEGIN
+INSERT INTO Field_Of_Expertise SELECT inserted.field FROM inserted;
+INSERT INTO Prof_Has_Expertise SELECT * FROM inserted;
+END
+ELSE
+INSERT INTO Prof_Has_Expertise SELECT * FROM inserted;
+END;
+
+CREATE TRIGGER labRTrig
+ON Research_Lab
+INSTEAD OF INSERT 
+AS
+BEGIN
+IF( NOT EXISTS (SELECT * FROM Laboratory AS L , inserted AS N  WHERE N.Rlab_name = L.lab_name AND N.school_name = L.school_name ))
+BEGIN
+INSERT INTO Laboratory(lab_name, school_name) SELECT N.Rlab_name, N.school_name FROM inserted AS N;
+INSERT INTO Research_Lab SELECT * FROM inserted;
+END
+ELSE
+INSERT INTO Research_Lab SELECT * FROM inserted;
+END;
+
+CREATE TRIGGER labTTrig
+ON Teaching_Lab
+INSTEAD OF INSERT 
+AS
+BEGIN
+IF( NOT EXISTS (SELECT * FROM Laboratory AS L , inserted AS N  WHERE N.Tlab_name = L.lab_name AND N.school_name = L.school_name ))
+BEGIN
+INSERT INTO Laboratory(lab_name, school_name) SELECT N.Tlab_name , N.school_name FROM inserted AS N;
+INSERT INTO Teaching_Lab SELECT * FROM inserted;
+END
+ELSE
+INSERT INTO Teaching_Lab SELECT * FROM inserted;
+END;
+
+CREATE TRIGGER gradAssignLabTrig
+ON Grad_Assigned_RLab
+INSTEAD OF INSERT 
+AS
+BEGIN
+IF ( NOT EXISTS (SELECT * FROM Research_Lab AS L, inserted AS N WHERE N.Rlab_name = L.Rlab_name AND N.school_name = L.school_name ))
+BEGIN
+INSERT INTO Research_Lab(Rlab_name, school_name) SELECT  N.Rlab_name , N.school_name FROM inserted AS N;
+INSERT INTO Grad_Assigned_RLab SELECT * FROM inserted;
+END;
+ELSE
+INSERT INTO Grad_Assigned_RLab SELECT * FROM inserted;
+END;
+
+CREATE TRIGGER LabExpTrig
+ ON Lab_Experiment
+INSTEAD OF INSERT
+AS
+BEGIN
+IF ( NOT EXISTS (SELECT * FROM Teaching_Lab AS L, inserted as N WHERE N.Tlab_name = L.Tlab_name AND N.school_name = L.school_name ))
+BEGIN
+INSERT INTO Teaching_Lab(Tlab_name, school_name) SELECT N.Tlab_name , N.school_name FROM inserted AS N;
+INSERT INTO Lab_Experiment SELECT * FROM inserted;
+END;
+ELSE
+INSERT INTO Lab_Experiment SELECT * FROM inserted;
+END;
+
+CREATE TRIGGER TechStaffTrig
+ON Technical_Staff
+INSTEAD OF INSERT
+AS
+BEGIN
+IF( NOT EXISTS (SELECT * FROM Laboratory L , inserted AS N WHERE N.lab_name = L.lab_name AND N.school_name = L.school_name ))
+BEGIN
+INSERT INTO Laboratory(lab_name, school_name) SELECT N.lab_name , N.school_name FROM inserted AS N;
+INSERT INTO Technical_Staff SELECT * FROM inserted;
+END;
+ELSE
+INSERT INTO Technical_Staff SELECT * FROM inserted;
+END;
+
+CREATE TRIGGER ProfDelTrig
+ON Professor
+AFTER DELETE
+AS
+BEGIN
+DELETE FROM Research
+WHERE Research.professor_person_ID = (SELECT  deleted.person_ID FROM deleted);
+DELETE FROM Course_Taught 
+WHERE Course_Taught. professor_person_ID = (SELECT  deleted.person_ID FROM deleted);
+--DELETE FROM Professor
+--WHERE Professor.person_ID = (SELECT  deleted.person_ID FROM deleted);
+END;
+
+--Triggers to implement Foreign Key Constraints on Course_Taught--
+CREATE TRIGGER InsertCourseTaughtTrig
+ON Course_Taught
+INSTEAD OF INSERT
+AS
+BEGIN
+IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
+  RAISERROR('Failed to insert into Course_Taught. professor_person_ID not found in person_ID from Professor', 11, 1);
+ELSE IF EXISTS(SELECT * FROM inserted WHERE student_person_ID NOT IN (SELECT person_ID FROM Student))
+  RAISERROR('Failed to insert into Course_Taught. student_person_ID not found in person_ID from Student', 11, 1);
+ELSE IF EXISTS(SELECT * FROM inserted AS I WHERE course_ID NOT IN (SELECT course_ID FROM Course))
+  RAISERROR('Failed to insert into Course_Taught. course_ID not found in course_ID of Course', 11, 1);
+ELSE
+  INSERT INTO Course_Taught SELECT * FROM inserted;
+END;
+
+CREATE TRIGGER UpdateCourseTaughtTrig
+ON Course_Taught
+AFTER UPDATE
+AS
+IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
+BEGIN
+  ROLLBACK;
+  RAISERROR('Failed to update Course_Taught. professor_person_ID not found in person_ID from Professor', 11, 1);
+END;
+ELSE IF EXISTS(SELECT * FROM inserted WHERE student_person_ID NOT IN (SELECT person_ID FROM Student))
+BEGIN
+  ROLLBACK;
+  RAISERROR('Failed to update Course_Taught. student_person_ID not found in person_ID from Student', 11, 1);
+END;
+ELSE IF EXISTS(SELECT * FROM inserted AS I WHERE course_ID NOT IN (SELECT course_ID FROM Course))
+BEGIN
+  ROLLBACK;
+  RAISERROR('Failed to update Course_Taught. course_ID not found in course_ID of Course', 11, 1);
+END;
+
+--Triggers to implement Foreign Key Constraints on Research--
+CREATE TRIGGER InsertResearchTrig
+ON Research
+INSTEAD OF INSERT
+AS
+BEGIN
+IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
+  RAISERROR('Failed to insert into Research. professor_person_ID not found in person_ID from Professor', 11, 1);
+ELSE IF EXISTS(SELECT * FROM inserted WHERE graduate_person_ID NOT IN (SELECT person_ID FROM Graduate))
+  RAISERROR('Failed to insert into Research. graduate_person_ID not found in person_ID from Graduate', 11, 1);
+ELSE
+  INSERT INTO Research SELECT * FROM inserted;
+END;
+
+CREATE TRIGGER UpdateResearchTrig
+ON Research
+AFTER UPDATE
+AS
+IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
+BEGIN
+  ROLLBACK;
+  RAISERROR('Failed to update Research. professor_person_ID not found in person_ID from Professor', 11, 1);
+END;
+ELSE IF EXISTS(SELECT * FROM inserted WHERE graduate_person_ID NOT IN (SELECT person_ID FROM Graduate))
+BEGIN
+  ROLLBACK;
+  RAISERROR('Failed to update Research. graduate_person_ID not found in person_ID from Graduate', 11, 1);
+END;
+
+
 --Create Views (and Triggers) on Subclasses--
 CREATE VIEW StakeholderPerson AS
 SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.domain
@@ -332,8 +497,10 @@ CREATE TRIGGER InsertAdminStaff
 ON AdminStaffPerson
 INSTEAD OF INSERT
 AS BEGIN
-  INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
-  INSERT INTO Staff SELECT i.person_ID, i.staff_ID, i.position, i.date_hired FROM inserted i;
+  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+    INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
+  IF NOT EXISTS(SELECT * FROM Staff WHERE person_ID IN (SELECT person_ID FROM inserted))
+    INSERT INTO Staff SELECT i.person_ID, i.staff_ID, i.position, i.date_hired FROM inserted i;
   INSERT INTO Administrative_Staff SELECT i.person_ID, i.department FROM inserted i;
 END;
 
@@ -347,8 +514,10 @@ CREATE TRIGGER InsertTechStaff
 ON TechStaffPerson
 INSTEAD OF INSERT
 AS BEGIN
-  INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
-  INSERT INTO Staff SELECT i.person_ID, i.staff_ID, i.position, i.date_hired FROM inserted i;
+  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+    INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
+  IF NOT EXISTS(SELECT * FROM Staff WHERE person_ID IN (SELECT person_ID FROM inserted))
+    INSERT INTO Staff SELECT i.person_ID, i.staff_ID, i.position, i.date_hired FROM inserted i;
   INSERT INTO Technical_Staff SELECT i.person_ID, i.specialisation, i.lab_name, i.school_name FROM inserted i;
 END;
 
@@ -472,4 +641,58 @@ VALUES ('S6674993I', 'Zhi Duan', 'Block 26 Ayer Rajah Crescent 03-08', '65677721
 INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
 VALUES ('S6575203I', 'Jiahao Zheng', '179 River Valley Road #05-13 River Valley Building', '6563380863', 'jiaz0502@e.ntu.edu.sg', 'industry partners');
 
+
+--Insert Person In School--
+INSERT INTO Person_In_School VALUES('S9534183H', 'School of Civil and Environmental Engineering');
+INSERT INTO Person_In_School VALUES('S9434566H', 'School of Chemical and Biomedical Engineering');
+INSERT INTO Person_In_School VALUES('S9534185H','School of Physical and Mathematical Sciences');
+INSERT INTO Person_In_School VALUES ('S9534182H', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S9438012H', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S9310372A', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S9845371C', 'School of Materials Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S9811102A', 'School of Chemical and Biomedical Engineering');
+INSERT INTO Person_In_School VALUES ('S9822170Z', 'School of Chemical and Biomedical Engineering');
+INSERT INTO Person_In_School VALUES ('S8945371A', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S8525200Z', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S8809791A', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S6878903I', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S7255001I', 'School of Materials Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S6808102I', 'School of Chemical and Biomedical Engineering');
+
+INSERT INTO Person_In_School VALUES ('S8932771E', 'school_name');--This guy admin staff not sure if he belongs to a school he work in academic office dept
+INSERT INTO Person_In_School VALUES ('S8548701A', 'school_name');--This guy admin staff not sure if he belongs to a school he work in academic office dept
+INSERT INTO Person_In_School VALUES ('S8778021Z', 'school_name');--This guy admin staff not sure if he belongs to a school he work in graduate office dept
+INSERT INTO Person_In_School VALUES ('S6674993I', 'school_name');--stakeholder got school?
+INSERT INTO Person_In_School VALUES ('S6575203I', 'school_name');--stakeholder got school?
+INSERT INTO Person_In_School VALUES ('S7756201I', 'school_name');--stakeholder got school?
+
+
+--UPDATE Teaching_Lab purposes--
+UPDATE Teaching_Lab SET purpose = 'Software' WHERE Tlab_name LIKE '%Software%';
+UPDATE Teaching_Lab SET purpose = 'Hardware' WHERE Tlab_name LIKE '%Hardware%';
+
+--UPDATE Research_Lab types--
+UPDATE Research_Lab SET type = 'R&D' WHERE Rlab_name IN ('Cyber Security Lab', 'Parallel & Distributed Computing Lab', 'Computational Intelligence Lab', 'Hardware & Embedded Systems Lab', 'Computer Networks & Communications Lab');
+UPDATE Research_Lab SET type = 'Data Analytics' WHERE Rlab_name IN ('Biomedical Informatics Lab', 'Data Management & Analytics Lab');
+UPDATE Research_Lab SET type = 'Applied' WHERE Rlab_name IN ('Multimedia & Interactive Computing Lab');
+
+
 SELECT * FROM StakeholderPerson;
+SELECT * FROM UndergradPerson;
+SELECT * FROM GradPerson;
+SELECT * FROM ProfessorPerson;
+SELECT * FROM AdminStaffPerson;
+SELECT * FROM TechStaffPerson;
+SELECT * FROM ResearchLab;
+SELECT * FROM TeachingLab;
+
+SELECT * FROM Class;
+
+SELECT * FROM School;
+SELECT * FROM PersonInUni;
+SELECT * FROM Address;
+SELECT * FROM Stakeholder;
+SELECT * FROM Comment_Suggestion;
+SELECT * FROM Student;
+SELECT * FROM Course_Taught;
+SELECT * FROM Person_In_School
