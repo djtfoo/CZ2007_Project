@@ -57,8 +57,15 @@ topic VARCHAR(50),
 
 PRIMARY KEY(comment_date , comment_time , person_ID ),
 FOREIGN KEY (person_ID) REFERENCES Stakeholder(person_ID)
-ON UPDATE CASCADE  --reject deletion as comments could be important
+ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+SELECT * FROM sys.foreign_keys;
+ALTER TABLE Comment_Suggestion
+DROP CONSTRAINT FK__Comment_S__perso__0B5CAFEA
+ALTER TABLE Comment_Suggestion
+ADD FOREIGN KEY (person_ID) REFERENCES Stakeholder(person_ID) ON DELETE CASCADE ON UPDATE CASCADE
+
 
 CREATE TABLE Course
 (course_ID CHAR(6) PRIMARY KEY,
@@ -165,8 +172,7 @@ CHECK(major <> minor)
 );
 
 ALTER TABLE Student
-ADD CONSTRAINT student_ID CHECK(student_ID LIKE 'U________%' OR student_ID LIKE 'G________%');	--start with 'U' or 'G', followe by 8 characters
-
+ADD CONSTRAINT student_ID CHECK(student_ID LIKE 'U________%' OR student_ID LIKE 'G________%');	--start with 'U' or 'G', followed by 8 characters
 
 CREATE TABLE Undergraduate
 (person_ID CHAR(9) PRIMARY KEY,
@@ -225,7 +231,7 @@ person_ID CHAR(9),  --professor teaching the course
 PRIMARY KEY(course_ID, class_date, class_time),
 FOREIGN KEY(course_ID) REFERENCES Course(course_ID)
 ON UPDATE CASCADE,  --still thinkin about delete
-FOREIGN KEY(person_ID) REFERENCES Student(person_ID)
+FOREIGN KEY(person_ID) REFERENCES Professor(person_ID)
 ON DELETE CASCADE ON UPDATE CASCADE --fjt
 );
 
@@ -251,6 +257,8 @@ PRIMARY KEY (topic, professor_person_ID, graduate_person_ID),
 --FOREIGN KEY (professor_person_ID) REFERENCES Professor(person_ID),	--use trigger to implement 'ON DELETE CASCADE ON UPDATE CASCADE'
 --FOREIGN KEY (graduate_person_ID) REFERENCES Graduate(person_ID)		--use trigger to implement 'ON DELETE CASCADE ON UPDATE CASCADE'
 );
+ALTER TABLE Research ADD FOREIGN KEY (graduate_person_ID) REFERENCES Graduate(person_ID)
+ALTER TABLE Research ADD FOREIGN KEY (professor_person_ID) REFERENCES Professor(person_ID)
 
 SELECT * FROM sys.foreign_keys;
 ALTER TABLE Research
@@ -263,24 +271,15 @@ professor_person_ID CHAR(9),
 course_ID CHAR(6),
 
 PRIMARY KEY(date_taught, student_person_ID, professor_person_ID, course_ID)
---FOREIGN KEY (course_ID) REFERENCES Course(course_ID) ON UPDATE CASCADE, --cannot delete a course if it’s been taught before  --REMOVED
+--FOREIGN KEY (course_ID) REFERENCES Course(course_ID) ON UPDATE CASCADE, --cannot delete a course if it’s been taught before
 --FOREIGN KEY (student_person_ID) REFERENCES Student(person_ID),	--use trigger to implement 'ON DELETE CASCADE ON UPDATE CASCADE'
 --FOREIGN KEY (professor_person_ID) REFERENCES Professor(person_ID)	--use trigger to implement 'ON DELETE CASCADE ON UPDATE CASCADE'
 );
-ALTER TABLE Course_Taught
-DROP CONSTRAINT FK__Course_Ta__cours__55009F39
+ALTER TABLE Course_Taught ADD FOREIGN KEY (course_ID) REFERENCES Course(course_ID) ON UPDATE CASCADE
+ALTER TABLE Course_Taught ADD FOREIGN KEY (student_person_ID) REFERENCES Student(person_ID)
+ALTER TABLE Course_Taught ADD FOREIGN KEY (professor_person_ID) REFERENCES Professor(person_ID)
 
 --Create Triggers--
---CREATE TRIGGER CityTrig
---ON City
---INSTEAD OF INSERT
---AS
---  IF NOT EXISTS(SELECT * FROM State WHERE state_name IN (SELECT state_name FROM inserted))
---  BEGIN
---    INSERT INTO State SELECT i.state_name FROM inserted i;
---    INSERT INTO City SELECT i.city_name, i.state_name FROM inserted i;
---  END;
-
 CREATE TRIGGER CityTrig
 ON City
 INSTEAD OF INSERT
@@ -323,75 +322,83 @@ ELSE
 INSERT INTO Prof_Has_Expertise SELECT * FROM inserted;
 END;
 
-CREATE TRIGGER labRTrig
-ON Research_Lab
-INSTEAD OF INSERT 
-AS
-BEGIN
-IF( NOT EXISTS (SELECT * FROM Laboratory AS L , inserted AS N  WHERE N.Rlab_name = L.lab_name AND N.school_name = L.school_name ))
-BEGIN
-INSERT INTO Laboratory(lab_name, school_name) SELECT N.Rlab_name, N.school_name FROM inserted AS N;
-INSERT INTO Research_Lab SELECT * FROM inserted;
-END
-ELSE
-INSERT INTO Research_Lab SELECT * FROM inserted;
-END;
+--CREATE TRIGGER labRTrig
+--ON Research_Lab
+--INSTEAD OF INSERT 
+--AS
+--BEGIN
+--IF( NOT EXISTS (SELECT * FROM Laboratory AS L , inserted AS N  WHERE N.Rlab_name = L.lab_name AND N.school_name = L.school_name ))
+--BEGIN
+--INSERT INTO Laboratory(lab_name, school_name) SELECT N.Rlab_name, N.school_name FROM inserted AS N;
+--INSERT INTO Research_Lab SELECT * FROM inserted;
+--END
+--ELSE
+--INSERT INTO Research_Lab SELECT * FROM inserted;
+--END;
 
-CREATE TRIGGER labTTrig
-ON Teaching_Lab
-INSTEAD OF INSERT 
-AS
-BEGIN
-IF( NOT EXISTS (SELECT * FROM Laboratory AS L , inserted AS N  WHERE N.Tlab_name = L.lab_name AND N.school_name = L.school_name ))
-BEGIN
-INSERT INTO Laboratory(lab_name, school_name) SELECT N.Tlab_name , N.school_name FROM inserted AS N;
-INSERT INTO Teaching_Lab SELECT * FROM inserted;
-END
-ELSE
-INSERT INTO Teaching_Lab SELECT * FROM inserted;
-END;
+DROP TRIGGER labRTrig
 
+--CREATE TRIGGER labTTrig
+--ON Teaching_Lab
+--INSTEAD OF INSERT 
+--AS
+--BEGIN
+--IF( NOT EXISTS (SELECT * FROM Laboratory AS L , inserted AS N  WHERE N.Tlab_name = L.lab_name AND N.school_name = L.school_name ))
+--BEGIN
+--INSERT INTO Laboratory(lab_name, school_name) SELECT N.Tlab_name , N.school_name FROM inserted AS N;
+--INSERT INTO Teaching_Lab SELECT * FROM inserted;
+--END
+--ELSE
+--INSERT INTO Teaching_Lab SELECT * FROM inserted;
+--END;
+DROP TRIGGER labTTrig
+
+--Insert laboratory into Research_Lab if it is not yet a Research_Lab--
 CREATE TRIGGER gradAssignLabTrig
 ON Grad_Assigned_RLab
 INSTEAD OF INSERT 
 AS
 BEGIN
-IF ( NOT EXISTS (SELECT * FROM Research_Lab AS L, inserted AS N WHERE N.Rlab_name = L.Rlab_name AND N.school_name = L.school_name ))
-BEGIN
-INSERT INTO Research_Lab(Rlab_name, school_name) SELECT  N.Rlab_name , N.school_name FROM inserted AS N;
-INSERT INTO Grad_Assigned_RLab SELECT * FROM inserted;
-END;
-ELSE
-INSERT INTO Grad_Assigned_RLab SELECT * FROM inserted;
+  IF ( NOT EXISTS (SELECT * FROM Laboratory AS L, inserted as N WHERE N.Rlab_name = L.lab_name AND N.school_name = L.school_name ))
+    RAISERROR('Cannot insert into Grad_Assigned_RLab. Laboratory does not exist', 11, 1);
+  ELSE
+  BEGIN
+  IF ( NOT EXISTS (SELECT * FROM Research_Lab AS L, inserted AS N WHERE N.Rlab_name = L.Rlab_name AND N.school_name = L.school_name ))
+    INSERT INTO Research_Lab(Rlab_name, school_name) SELECT  N.Rlab_name , N.school_name FROM inserted AS N;
+  INSERT INTO Grad_Assigned_RLab SELECT * FROM inserted;
+  END;
 END;
 
+--Insert laboratory into Teaching_Lab if it is not yet a Teaching_Lab--
 CREATE TRIGGER LabExpTrig
  ON Lab_Experiment
 INSTEAD OF INSERT
 AS
 BEGIN
-IF ( NOT EXISTS (SELECT * FROM Teaching_Lab AS L, inserted as N WHERE N.Tlab_name = L.Tlab_name AND N.school_name = L.school_name ))
-BEGIN
-INSERT INTO Teaching_Lab(Tlab_name, school_name) SELECT N.Tlab_name , N.school_name FROM inserted AS N;
-INSERT INTO Lab_Experiment SELECT * FROM inserted;
-END;
-ELSE
-INSERT INTO Lab_Experiment SELECT * FROM inserted;
+  IF ( NOT EXISTS (SELECT * FROM Laboratory AS L, inserted as N WHERE N.Tlab_name = L.lab_name AND N.school_name = L.school_name ))
+    RAISERROR('Cannot insert into Lab_Experiment. Laboratory does not exist', 11, 1);
+  ELSE
+  BEGIN
+  IF ( NOT EXISTS (SELECT * FROM Teaching_Lab AS L, inserted as N WHERE N.Tlab_name = L.Tlab_name AND N.school_name = L.school_name ))
+    INSERT INTO Teaching_Lab(Tlab_name, school_name) SELECT N.Tlab_name , N.school_name FROM inserted AS N;
+  INSERT INTO Lab_Experiment SELECT * FROM inserted;
+  END;
 END;
 
-CREATE TRIGGER TechStaffTrig
-ON Technical_Staff
-INSTEAD OF INSERT
-AS
-BEGIN
-IF( NOT EXISTS (SELECT * FROM Laboratory L , inserted AS N WHERE N.lab_name = L.lab_name AND N.school_name = L.school_name ))
-BEGIN
-INSERT INTO Laboratory(lab_name, school_name) SELECT N.lab_name , N.school_name FROM inserted AS N;
-INSERT INTO Technical_Staff SELECT * FROM inserted;
-END;
-ELSE
-INSERT INTO Technical_Staff SELECT * FROM inserted;
-END;
+--CREATE TRIGGER TechStaffTrig
+--ON Technical_Staff
+--INSTEAD OF INSERT
+--AS
+--BEGIN
+--IF( NOT EXISTS (SELECT * FROM Laboratory L , inserted AS N WHERE N.lab_name = L.lab_name AND N.school_name = L.school_name ))
+--BEGIN
+--INSERT INTO Laboratory(lab_name, school_name) SELECT N.lab_name , N.school_name FROM inserted AS N;
+--INSERT INTO Technical_Staff SELECT * FROM inserted;
+--END;
+--ELSE
+--INSERT INTO Technical_Staff SELECT * FROM inserted;
+--END;
+DROP TRIGGER TechStaffTrig
 
 CREATE TRIGGER ProfDelTrig
 ON Professor
@@ -399,78 +406,92 @@ AFTER DELETE
 AS
 BEGIN
 DELETE FROM Research
-WHERE Research.professor_person_ID = (SELECT  deleted.person_ID FROM deleted);
+WHERE Research.professor_person_ID IN (SELECT  deleted.person_ID FROM deleted);
 DELETE FROM Course_Taught 
-WHERE Course_Taught. professor_person_ID = (SELECT  deleted.person_ID FROM deleted);
+WHERE Course_Taught. professor_person_ID IN (SELECT  deleted.person_ID FROM deleted);
 --DELETE FROM Professor
 --WHERE Professor.person_ID = (SELECT  deleted.person_ID FROM deleted);
 END;
+DROP TRIGGER ProfDelTrig
+
+CREATE TRIGGER AssignResearchTrig
+ON Research
+AFTER INSERT
+AS
+IF((SELECT N.graduate_person_ID FROM inserted AS N )NOT IN (SELECT Grad_Assigned_RLab.person_ID FROM Grad_Assigned_RLab))
+BEGIN
+ROLLBACK
+RAISERROR('Failed to assign graduate to research, Graduate must be assigned at least one research laboratory', 11, 1);
+END;
 
 --Triggers to implement Foreign Key Constraints on Course_Taught--
-CREATE TRIGGER InsertCourseTaughtTrig
-ON Course_Taught
-INSTEAD OF INSERT
-AS
-BEGIN
-IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
-  RAISERROR('Failed to insert into Course_Taught. professor_person_ID not found in person_ID from Professor', 11, 1);
-ELSE IF EXISTS(SELECT * FROM inserted WHERE student_person_ID NOT IN (SELECT person_ID FROM Student))
-  RAISERROR('Failed to insert into Course_Taught. student_person_ID not found in person_ID from Student', 11, 1);
-ELSE IF EXISTS(SELECT * FROM inserted AS I WHERE course_ID NOT IN (SELECT course_ID FROM Course))
-  RAISERROR('Failed to insert into Course_Taught. course_ID not found in course_ID of Course', 11, 1);
-ELSE
-  INSERT INTO Course_Taught SELECT * FROM inserted;
-END;
+--CREATE TRIGGER InsertCourseTaughtTrig
+--ON Course_Taught
+--INSTEAD OF INSERT
+--AS
+--BEGIN
+--IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
+--  RAISERROR('Failed to insert into Course_Taught. professor_person_ID not found in person_ID from Professor', 11, 1);
+--ELSE IF EXISTS(SELECT * FROM inserted WHERE student_person_ID NOT IN (SELECT person_ID FROM Student))
+--  RAISERROR('Failed to insert into Course_Taught. student_person_ID not found in person_ID from Student', 11, 1);
+--ELSE IF EXISTS(SELECT * FROM inserted AS I WHERE course_ID NOT IN (SELECT course_ID FROM Course))
+--  RAISERROR('Failed to insert into Course_Taught. course_ID not found in course_ID of Course', 11, 1);
+--ELSE
+--  INSERT INTO Course_Taught SELECT * FROM inserted;
+--END;
+DROP TRIGGER InsertCourseTaughtTrig
 
-CREATE TRIGGER UpdateCourseTaughtTrig
-ON Course_Taught
-AFTER UPDATE
-AS
-IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
-BEGIN
-  ROLLBACK;
-  RAISERROR('Failed to update Course_Taught. professor_person_ID not found in person_ID from Professor', 11, 1);
-END;
-ELSE IF EXISTS(SELECT * FROM inserted WHERE student_person_ID NOT IN (SELECT person_ID FROM Student))
-BEGIN
-  ROLLBACK;
-  RAISERROR('Failed to update Course_Taught. student_person_ID not found in person_ID from Student', 11, 1);
-END;
-ELSE IF EXISTS(SELECT * FROM inserted AS I WHERE course_ID NOT IN (SELECT course_ID FROM Course))
-BEGIN
-  ROLLBACK;
-  RAISERROR('Failed to update Course_Taught. course_ID not found in course_ID of Course', 11, 1);
-END;
+--CREATE TRIGGER UpdateCourseTaughtTrig
+--ON Course_Taught
+--AFTER UPDATE
+--AS
+--IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
+--BEGIN
+--  ROLLBACK;
+--  RAISERROR('Failed to update Course_Taught. professor_person_ID not found in person_ID from Professor', 11, 1);
+--END;
+--ELSE IF EXISTS(SELECT * FROM inserted WHERE student_person_ID NOT IN (SELECT person_ID FROM Student))
+--BEGIN
+--  ROLLBACK;
+--  RAISERROR('Failed to update Course_Taught. student_person_ID not found in person_ID from Student', 11, 1);
+--END;
+--ELSE IF EXISTS(SELECT * FROM inserted AS I WHERE course_ID NOT IN (SELECT course_ID FROM Course))
+--BEGIN
+--  ROLLBACK;
+--  RAISERROR('Failed to update Course_Taught. course_ID not found in course_ID of Course', 11, 1);
+--END;
+DROP TRIGGER UpdateCourseTaughtTrig
 
 --Triggers to implement Foreign Key Constraints on Research--
-CREATE TRIGGER InsertResearchTrig
-ON Research
-INSTEAD OF INSERT
-AS
-BEGIN
-IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
-  RAISERROR('Failed to insert into Research. professor_person_ID not found in person_ID from Professor', 11, 1);
-ELSE IF EXISTS(SELECT * FROM inserted WHERE graduate_person_ID NOT IN (SELECT person_ID FROM Graduate))
-  RAISERROR('Failed to insert into Research. graduate_person_ID not found in person_ID from Graduate', 11, 1);
-ELSE
-  INSERT INTO Research SELECT * FROM inserted;
-END;
+--CREATE TRIGGER InsertResearchTrig
+--ON Research
+--INSTEAD OF INSERT
+--AS
+--BEGIN
+--IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
+--  RAISERROR('Failed to insert into Research. professor_person_ID not found in person_ID from Professor', 11, 1);
+--ELSE IF EXISTS(SELECT * FROM inserted WHERE graduate_person_ID NOT IN (SELECT person_ID FROM Graduate))
+--  RAISERROR('Failed to insert into Research. graduate_person_ID not found in person_ID from Graduate', 11, 1);
+--ELSE
+--  INSERT INTO Research SELECT * FROM inserted;
+--END;
+DROP TRIGGER InsertResearchTrig
 
-CREATE TRIGGER UpdateResearchTrig
-ON Research
-AFTER UPDATE
-AS
-IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
-BEGIN
-  ROLLBACK;
-  RAISERROR('Failed to update Research. professor_person_ID not found in person_ID from Professor', 11, 1);
-END;
-ELSE IF EXISTS(SELECT * FROM inserted WHERE graduate_person_ID NOT IN (SELECT person_ID FROM Graduate))
-BEGIN
-  ROLLBACK;
-  RAISERROR('Failed to update Research. graduate_person_ID not found in person_ID from Graduate', 11, 1);
-END;
-
+--CREATE TRIGGER UpdateResearchTrig
+--ON Research
+--AFTER UPDATE
+--AS
+--IF EXISTS(SELECT * FROM inserted WHERE professor_person_ID NOT IN (SELECT person_ID FROM Professor))
+--BEGIN
+--  ROLLBACK;
+--  RAISERROR('Failed to update Research. professor_person_ID not found in person_ID from Professor', 11, 1);
+--END;
+--ELSE IF EXISTS(SELECT * FROM inserted WHERE graduate_person_ID NOT IN (SELECT person_ID FROM Graduate))
+--BEGIN
+--  ROLLBACK;
+--  RAISERROR('Failed to update Research. graduate_person_ID not found in person_ID from Graduate', 11, 1);
+--END;
+DROP TRIGGER UpdateResearchTrig
 
 --Create Views (and Triggers) on Subclasses--
 CREATE VIEW StakeholderPerson AS
@@ -598,6 +619,7 @@ AS BEGIN
   INSERT INTO Teaching_Lab SELECT i.lab_name, i.school_name, i.purpose FROM inserted i;
 END;
 
+
 '''
 CREATE TRIGGER InsertAddress
 ON PersonInUni
@@ -675,24 +697,3 @@ UPDATE Teaching_Lab SET purpose = 'Hardware' WHERE Tlab_name LIKE '%Hardware%';
 UPDATE Research_Lab SET type = 'R&D' WHERE Rlab_name IN ('Cyber Security Lab', 'Parallel & Distributed Computing Lab', 'Computational Intelligence Lab', 'Hardware & Embedded Systems Lab', 'Computer Networks & Communications Lab');
 UPDATE Research_Lab SET type = 'Data Analytics' WHERE Rlab_name IN ('Biomedical Informatics Lab', 'Data Management & Analytics Lab');
 UPDATE Research_Lab SET type = 'Applied' WHERE Rlab_name IN ('Multimedia & Interactive Computing Lab');
-
-
-SELECT * FROM StakeholderPerson;
-SELECT * FROM UndergradPerson;
-SELECT * FROM GradPerson;
-SELECT * FROM ProfessorPerson;
-SELECT * FROM AdminStaffPerson;
-SELECT * FROM TechStaffPerson;
-SELECT * FROM ResearchLab;
-SELECT * FROM TeachingLab;
-
-SELECT * FROM Class;
-
-SELECT * FROM School;
-SELECT * FROM PersonInUni;
-SELECT * FROM Address;
-SELECT * FROM Stakeholder;
-SELECT * FROM Comment_Suggestion;
-SELECT * FROM Student;
-SELECT * FROM Course_Taught;
-SELECT * FROM Person_In_School
