@@ -33,6 +33,7 @@ SELECT person_ID, person_name
 FROM ProfessorPerson
 WHERE person_ID IN (SELECT C.professor_person_ID
 					FROM Course_Taught C
+					WHERE C.date_taught BETWEEN '2019-08-12' AND '2019-11-15'
 					GROUP BY C.professor_person_ID
 					HAVING COUNT(DISTINCT C.course_ID) > 1);
 
