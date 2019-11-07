@@ -142,6 +142,8 @@ FOREIGN KEY (person_ID) REFERENCES Staff(person_ID)
 FOREIGN KEY (lab_name, school_name) REFERENCES Laboratory(lab_name, school_name) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
+SELECT * FROM sys.foreign_keys;
+
 CREATE TABLE Research_Lab
 (Rlab_name VARCHAR(50),
 school_name VARCHAR(50),
@@ -400,28 +402,39 @@ END;
 --END;
 DROP TRIGGER TechStaffTrig
 
-CREATE TRIGGER ProfDelTrig
-ON Professor
-AFTER DELETE
-AS
-BEGIN
-DELETE FROM Research
-WHERE Research.professor_person_ID IN (SELECT  deleted.person_ID FROM deleted);
-DELETE FROM Course_Taught 
-WHERE Course_Taught. professor_person_ID IN (SELECT  deleted.person_ID FROM deleted);
---DELETE FROM Professor
---WHERE Professor.person_ID = (SELECT  deleted.person_ID FROM deleted);
-END;
+--CREATE TRIGGER ProfDelTrig
+--ON Professor
+--AFTER DELETE
+--AS
+--BEGIN
+--DELETE FROM Research
+--WHERE Research.professor_person_ID IN (SELECT  deleted.person_ID FROM deleted);
+--DELETE FROM Course_Taught 
+--WHERE Course_Taught. professor_person_ID IN (SELECT  deleted.person_ID FROM deleted);
+----DELETE FROM Professor
+----WHERE Professor.person_ID = (SELECT  deleted.person_ID FROM deleted);
+--END;
 DROP TRIGGER ProfDelTrig
+
 
 CREATE TRIGGER AssignResearchTrig
 ON Research
-AFTER INSERT
+INSTEAD OF INSERT
 AS
-IF((SELECT N.graduate_person_ID FROM inserted AS N )NOT IN (SELECT Grad_Assigned_RLab.person_ID FROM Grad_Assigned_RLab))
 BEGIN
-ROLLBACK
+IF((SELECT N.graduate_person_ID FROM inserted AS N )NOT IN (SELECT Grad_Assigned_RLab.person_ID FROM Grad_Assigned_RLab))
 RAISERROR('Failed to assign graduate to research, Graduate must be assigned at least one research laboratory', 11, 1);
+ELSE
+INSERT INTO Research SELECT * FROM inserted;
+END;
+
+CREATE TRIGGER RemoveTechStaffLab
+ON Technical_Staff
+AFTER UPDATE
+AS
+BEGIN
+UPDATE Technical_Staff SET lab_name = NULL WHERE school_name IS NULL;
+UPDATE Technical_Staff SET school_name = NULL WHERE lab_name IS NULL;
 END;
 
 --Triggers to implement Foreign Key Constraints on Course_Taught--
@@ -651,7 +664,7 @@ INSERT INTO Address(person_address, zip) VALUES ('317 Outram Road B1-23 Holiday 
 INSERT INTO Address(person_address, zip) VALUES ('1 Hougang Street 91 #01-41 HOUGANG FESTIVAL MARKET' , '538692');
 INSERT INTO Address(person_address, zip) VALUES ('620A, Lor 1 Toa Payoh' , '319762');
 INSERT INTO Address(person_address, zip) VALUES ('20 Ayer Rajah Crescent #04-04 TECHNOPRENEUR CENTRE' , '139964');
-
+INSERT INTO Address(person_address, zip) VALUES ('455 Hougang Ave 10 #08-449', '530455');
 
 --Insert Stakeholders--
 INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
@@ -662,6 +675,12 @@ VALUES ('S6674993I', 'Zhi Duan', 'Block 26 Ayer Rajah Crescent 03-08', '65677721
 
 INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
 VALUES ('S6575203I', 'Jiahao Zheng', '179 River Valley Road #05-13 River Valley Building', '6563380863', 'jiaz0502@e.ntu.edu.sg', 'industry partners');
+
+INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
+VALUES ('S9221012D', 'Low Zhengyuan', '455 Hougang Ave 10 #08-449', '6593217765', 'tanz0101@e.ntu.edu.sg', 'public');
+
+INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
+VALUES ('S7088201C', 'Lee Kong Nam', '455 Hougang Ave 10 #08-449', '6581216626', 'lkn@finfund.edu.sg', 'funding agency');
 
 
 --Insert Person In School--
