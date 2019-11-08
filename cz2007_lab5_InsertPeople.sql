@@ -1,5 +1,74 @@
 use ssp1g3;
 GO
+
+
+--Insert State, City, and Addresses--
+INSERT INTO State VALUES ('Singapore');
+INSERT INTO City VALUES ('Singapore' , 'Singapore');
+INSERT INTO Address(person_address, zip) VALUES ('445 Clementi Ave 3 #01-173' , '120445');
+INSERT INTO Address(person_address, zip) VALUES ('Block 26 Ayer Rajah Crescent 03-08', '139944');
+INSERT INTO Address(person_address, zip) VALUES ('179 River Valley Road #05-13 River Valley Building', '179033');
+INSERT INTO Address(person_address, zip) VALUES ('1002 Jalan Bukit Merah #02-01/03' , '159456');
+INSERT INTO Address(person_address, zip) VALUES ('20 Upper Circular Road #03-06A The Riverwalk' , '058416');
+INSERT INTO Address(person_address, zip) VALUES ('101 Thomson Road #07-02 UNITED SQUARE' , '307591');
+INSERT INTO Address(person_address, zip) VALUES ('133 New Bridge Road 12-07 Chinatown Point' , '059413');
+INSERT INTO Address(person_address, zip) VALUES ('3 Shenton Way #10-05 SHENTON HOUSE' , '068805');
+INSERT INTO Address(person_address, zip) VALUES ('19 Kim Keat Road #02-08 Fu Tsu Building' , '328804');
+INSERT INTO Address(person_address, zip) VALUES ('180 Clemenceau Avenue #06-01 HAW PAR CENTRE' , '239922');
+INSERT INTO Address(person_address, zip) VALUES ('#01-1195 , Blk 12 Toa Payoh Ind Pk Lor 8' , '319064');
+INSERT INTO Address(person_address, zip) VALUES ('460 Alexandra Road #38-00 Psa Building' , '119963');
+INSERT INTO Address(person_address, zip) VALUES ('110A Killiney Road TAI WAH BUILDING' , '239549');
+INSERT INTO Address(person_address, zip) VALUES ('317 Outram Road B1-23 Holiday Inn Atrium' , '169075');
+INSERT INTO Address(person_address, zip) VALUES ('1 Hougang Street 91 #01-41 HOUGANG FESTIVAL MARKET' , '538692');
+INSERT INTO Address(person_address, zip) VALUES ('620A, Lor 1 Toa Payoh' , '319762');
+INSERT INTO Address(person_address, zip) VALUES ('20 Ayer Rajah Crescent #04-04 TECHNOPRENEUR CENTRE' , '139964');
+INSERT INTO Address(person_address, zip) VALUES ('455 Hougang Ave 10 #08-449', '530455');
+
+--Insert Stakeholders--
+INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
+VALUES ('S7756201I', 'Long Zi', '445 Clementi Ave 3 #01-173', '6567755182', 'lozi0058@e.ntu.edu.sg', 'public');
+
+INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
+VALUES ('S6674993I', 'Zhi Duan', 'Block 26 Ayer Rajah Crescent 03-08', '6567772170', 'zhid0122@e.ntu.edu.sg', 'government');
+
+INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
+VALUES ('S6575203I', 'Jiahao Zheng', '179 River Valley Road #05-13 River Valley Building', '6563380863', 'jiaz0502@e.ntu.edu.sg', 'industry partners');
+
+INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
+VALUES ('S9221012D', 'Low Zhengyuan', '455 Hougang Ave 10 #08-449', '6593217765', 'tanz0101@e.ntu.edu.sg', 'public');
+
+INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
+VALUES ('S7088201C', 'Lee Kong Nam', '455 Hougang Ave 10 #08-449', '6581216626', 'lkn@finfund.edu.sg', 'funding agency');
+
+
+--Insert Person In School--
+INSERT INTO Person_In_School VALUES('S9534183H', 'School of Civil and Environmental Engineering');
+INSERT INTO Person_In_School VALUES('S9434566H', 'School of Chemical and Biomedical Engineering');
+INSERT INTO Person_In_School VALUES('S9534185H','School of Physical and Mathematical Sciences');
+INSERT INTO Person_In_School VALUES ('S9534182H', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S9438012H', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S9310372A', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S9845371C', 'School of Materials Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S9811102A', 'School of Chemical and Biomedical Engineering');
+INSERT INTO Person_In_School VALUES ('S9822170Z', 'School of Chemical and Biomedical Engineering');
+INSERT INTO Person_In_School VALUES ('S8945371A', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S8525200Z', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S8809791A', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S6878903I', 'School of Computer Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S7255001I', 'School of Materials Science and Engineering');
+INSERT INTO Person_In_School VALUES ('S6808102I', 'School of Chemical and Biomedical Engineering');
+
+
+--UPDATE Teaching_Lab purposes--
+UPDATE Teaching_Lab SET purpose = 'Software' WHERE Tlab_name LIKE '%Software%';
+UPDATE Teaching_Lab SET purpose = 'Hardware' WHERE Tlab_name LIKE '%Hardware%';
+
+--UPDATE Research_Lab types--
+UPDATE Research_Lab SET type = 'R&D' WHERE Rlab_name IN ('Cyber Security Lab', 'Parallel & Distributed Computing Lab', 'Computational Intelligence Lab', 'Hardware & Embedded Systems Lab', 'Computer Networks & Communications Lab');
+UPDATE Research_Lab SET type = 'Data Analytics' WHERE Rlab_name IN ('Biomedical Informatics Lab', 'Data Management & Analytics Lab');
+UPDATE Research_Lab SET type = 'Applied' WHERE Rlab_name IN ('Multimedia & Interactive Computing Lab');
+
+
 --------stakeholder start------
 --INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
 --VALUES ('S9438012H', 'Luoyang Teng' , '3 Shenton Way #10-05 SHENTON HOUSE' , '6567338537' , 'luot2543@e.ntu.edu.sg', 'public');

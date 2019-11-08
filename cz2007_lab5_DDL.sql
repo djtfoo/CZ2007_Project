@@ -16,7 +16,7 @@ CREATE TABLE City(
 
 	PRIMARY KEY(city_name, state_name),
 	FOREIGN KEY (state_name) REFERENCES State(state_name)
-	ON UPDATE CASCADE  --reject deletion of a State if there are cities
+		ON UPDATE CASCADE  --reject deletion of a State if there are cities
 );
 
 CREATE TABLE Address(
@@ -74,9 +74,9 @@ CREATE TABLE Person_In_School(
 	school_name VARCHAR(50),
 	PRIMARY KEY(person_ID, school_name),
 	FOREIGN KEY (person_ID) REFERENCES PersonInUni(person_ID)
-	  ON DELETE CASCADE ON UPDATE CASCADE,  --If person is deleted, delete entries; if person ID is updated, update entries
+		ON DELETE CASCADE ON UPDATE CASCADE,  --If person is deleted, delete entries; if person ID is updated, update entries
 	FOREIGN KEY (school_name) REFERENCES School(school_name)
-	  ON DELETE CASCADE ON UPDATE CASCADE  --If school is deleted, delete entries; if school name is updated, update entries
+		ON DELETE CASCADE ON UPDATE CASCADE  --If school is deleted, delete entries; if school name is updated, update entries
 );
 
 CREATE TABLE Staff(
@@ -85,14 +85,14 @@ CREATE TABLE Staff(
 	position VARCHAR(50),
 	date_hired DATE NOT NULL,
 	FOREIGN KEY (person_ID) REFERENCES PersonInUni(person_ID)
-	  ON DELETE CASCADE ON UPDATE CASCADE
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE Administrative_Staff(
 	person_ID CHAR(9) PRIMARY KEY,
 	department VARCHAR(50),
 	FOREIGN KEY (person_ID) REFERENCES Staff(person_ID)
-	  ON DELETE CASCADE ON UPDATE CASCADE
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE Laboratory(
@@ -101,7 +101,7 @@ CREATE TABLE Laboratory(
 	location VARCHAR(20) not null,
 	PRIMARY KEY(lab_name, school_name),
 	FOREIGN KEY (school_name) REFERENCES School(school_name)
-	  ON DELETE CASCADE ON UPDATE CASCADE
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE Equipment_Model(
@@ -117,9 +117,9 @@ CREATE TABLE Equipment(
 	date_purchased DATE not null,
 	PRIMARY KEY(equipment_ID, lab_name, school_name),
 	FOREIGN KEY (lab_name, school_name) REFERENCES Laboratory(lab_name, school_name)
-	  ON DELETE CASCADE ON UPDATE CASCADE,
+		ON DELETE CASCADE ON UPDATE CASCADE,
 	FOREIGN KEY (model_no) REFERENCES Equipment_Model(model_no)
-	  ON DELETE CASCADE ON UPDATE CASCADE
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE Technical_Staff(
@@ -128,7 +128,7 @@ CREATE TABLE Technical_Staff(
 	lab_name VARCHAR(50),
 	school_name VARCHAR(50),
 	FOREIGN KEY (person_ID) REFERENCES Staff(person_ID)
-	  ON DELETE CASCADE ON UPDATE CASCADE,
+		ON DELETE CASCADE ON UPDATE CASCADE,
 	FOREIGN KEY (lab_name, school_name) REFERENCES Laboratory(lab_name, school_name) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
@@ -157,7 +157,7 @@ CREATE TABLE Student(
 	major VARCHAR(50) not null,
 	minor VARCHAR(50),
 	FOREIGN KEY (person_ID) REFERENCES PersonInUni(person_ID)
-	  ON DELETE CASCADE ON UPDATE CASCADE,
+		ON DELETE CASCADE ON UPDATE CASCADE,
 	CHECK(major <> minor)
 );
 
@@ -165,14 +165,14 @@ CREATE TABLE Undergraduate(
 	person_ID CHAR(9) PRIMARY KEY,
 	GPA REAL CHECK(GPA IS NULL OR (GPA >= 0 AND GPA <= 5)), --GPA can be null, e.g. freshmen do not have GPA yet; e.g. AVG(GPA) will not be affected by freshmen
 	FOREIGN KEY (person_ID) REFERENCES Student(person_ID)
-	  ON DELETE CASCADE ON UPDATE CASCADE
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE Graduate(
 	person_ID CHAR(9) PRIMARY KEY,
 	grad_date DATE not null,
 	FOREIGN KEY (person_ID) REFERENCES Student(person_ID)
-	  ON DELETE CASCADE ON UPDATE CASCADE
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE Field_Of_Expertise(
@@ -183,7 +183,7 @@ CREATE TABLE Professor(
 	person_ID CHAR(9) PRIMARY KEY,
 	specialisation VARCHAR(50) not null,
 	FOREIGN KEY (person_ID) REFERENCES PersonInUni(person_ID)
-	  ON DELETE CASCADE ON UPDATE CASCADE
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE Prof_Has_Expertise(
@@ -191,9 +191,9 @@ CREATE TABLE Prof_Has_Expertise(
 	field VARCHAR(50),
 	PRIMARY KEY(person_ID, field),
 	FOREIGN KEY (person_ID) REFERENCES Professor(person_ID)
-	  ON DELETE CASCADE ON UPDATE CASCADE,
+		ON DELETE CASCADE ON UPDATE CASCADE,
 	FOREIGN KEY (field) REFERENCES Field_Of_Expertise(field)
-	  ON DELETE CASCADE ON UPDATE CASCADE
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE Lab_Experiment(
@@ -204,9 +204,9 @@ CREATE TABLE Lab_Experiment(
 	attendance BIT not null,
 	PRIMARY KEY(experiment_date, person_ID, Tlab_name, school_name),
 	FOREIGN KEY (person_ID) REFERENCES Undergraduate(person_ID)
-	  ON DELETE CASCADE ON UPDATE CASCADE,
+		ON DELETE CASCADE ON UPDATE CASCADE,
 	FOREIGN KEY (Tlab_name, school_name) REFERENCES Teaching_Lab(Tlab_name, school_name)
-	  ON DELETE CASCADE ON UPDATE CASCADE
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE Class(
@@ -217,9 +217,9 @@ CREATE TABLE Class(
 
 	PRIMARY KEY(course_ID, class_date, class_time),
 	FOREIGN KEY(course_ID) REFERENCES Course(course_ID)
-	ON UPDATE CASCADE,  --still thinkin about delete
+		ON UPDATE CASCADE,
 	FOREIGN KEY(person_ID) REFERENCES Professor(person_ID)
-	ON DELETE CASCADE ON UPDATE CASCADE --fjt
+		ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE Grad_Assigned_RLab(
@@ -234,8 +234,6 @@ CREATE TABLE Grad_Assigned_RLab(
 	PRIMARY KEY (person_ID, Rlab_name, school_name)
 );
 
-
---Foreign Keys have cycles or too many cascade paths
 CREATE TABLE Research(
 	topic VARCHAR(50),
 	professor_person_ID CHAR(9),
@@ -354,102 +352,114 @@ UPDATE Technical_Staff SET lab_name = NULL WHERE school_name IS NULL;
 UPDATE Technical_Staff SET school_name = NULL WHERE lab_name IS NULL;
 END;
 
+
 --Create Views (and Triggers) on Subclasses--
 CREATE VIEW StakeholderPerson AS
 SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.domain
-FROM Stakeholder AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
-  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+FROM Stakeholder AS S
+JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
 
 CREATE TRIGGER InsertStakeholder
 ON StakeholderPerson
 INSTEAD OF INSERT
-AS BEGIN
-  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+AS
+BEGIN
+IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
 	INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
-  INSERT INTO Stakeholder SELECT i.person_ID, i.domain FROM inserted i;
+INSERT INTO Stakeholder SELECT i.person_ID, i.domain FROM inserted i;
 END;
 
 
 CREATE VIEW AdminStaffPerson AS
 SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, St.staff_ID, St.position, St.date_hired, S.department
-FROM Administrative_Staff AS S JOIN Staff St ON S.person_ID = St.person_ID JOIN PersonInUni AS P ON S.person_ID = P.person_ID
-  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+FROM Administrative_Staff AS S JOIN Staff St ON S.person_ID = St.person_ID
+JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
 
 CREATE TRIGGER InsertAdminStaff
 ON AdminStaffPerson
 INSTEAD OF INSERT
-AS BEGIN
-  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+AS
+BEGIN
+IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
     INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
-  IF NOT EXISTS(SELECT * FROM Staff WHERE person_ID IN (SELECT person_ID FROM inserted))
+IF NOT EXISTS(SELECT * FROM Staff WHERE person_ID IN (SELECT person_ID FROM inserted))
     INSERT INTO Staff SELECT i.person_ID, i.staff_ID, i.position, i.date_hired FROM inserted i;
-  INSERT INTO Administrative_Staff SELECT i.person_ID, i.department FROM inserted i;
+INSERT INTO Administrative_Staff SELECT i.person_ID, i.department FROM inserted i;
 END;
 
 
 CREATE VIEW TechStaffPerson AS
 SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, St.staff_ID, St.position, St.date_hired, S.specialisation, S.lab_name, S.school_name
-FROM Technical_Staff AS S JOIN Staff St ON S.person_ID = St.person_ID JOIN PersonInUni AS P ON S.person_ID = P.person_ID
-  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+FROM Technical_Staff AS S JOIN Staff St ON S.person_ID = St.person_ID
+JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
 
 CREATE TRIGGER InsertTechStaff
 ON TechStaffPerson
 INSTEAD OF INSERT
-AS BEGIN
-  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+AS
+BEGIN
+IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
     INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
-  IF NOT EXISTS(SELECT * FROM Staff WHERE person_ID IN (SELECT person_ID FROM inserted))
+IF NOT EXISTS(SELECT * FROM Staff WHERE person_ID IN (SELECT person_ID FROM inserted))
     INSERT INTO Staff SELECT i.person_ID, i.staff_ID, i.position, i.date_hired FROM inserted i;
-  INSERT INTO Technical_Staff SELECT i.person_ID, i.specialisation, i.lab_name, i.school_name FROM inserted i;
+INSERT INTO Technical_Staff SELECT i.person_ID, i.specialisation, i.lab_name, i.school_name FROM inserted i;
 END;
 
 
 CREATE VIEW UndergradPerson AS
 SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, St.student_ID, St.admission_date, St.major, St.minor, S.GPA
-FROM Undergraduate AS S JOIN Student St ON S.person_ID = St.person_ID JOIN PersonInUni AS P ON S.person_ID = P.person_ID
-  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+FROM Undergraduate AS S JOIN Student St ON S.person_ID = St.person_ID
+JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
 
 CREATE TRIGGER InsertUndergrad
 ON UndergradPerson
 INSTEAD OF INSERT
-AS BEGIN
-  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+AS
+BEGIN
+IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
     INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
-  IF NOT EXISTS(SELECT * FROM Student WHERE person_ID IN (SELECT person_ID FROM inserted))
+IF NOT EXISTS(SELECT * FROM Student WHERE person_ID IN (SELECT person_ID FROM inserted))
     INSERT INTO Student SELECT i.person_ID, i.student_ID, i.admission_date, i.major, i.minor FROM inserted i;
-  INSERT INTO Undergraduate SELECT i.person_ID, i.GPA FROM inserted i;
+INSERT INTO Undergraduate SELECT i.person_ID, i.GPA FROM inserted i;
 END;
 
 
 CREATE VIEW GradPerson AS
 SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, St.student_ID, St.admission_date, St.major, St.minor, S.grad_date
-FROM Graduate AS S JOIN Student St ON S.person_ID = St.person_ID JOIN PersonInUni AS P ON S.person_ID = P.person_ID
-  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+FROM Graduate AS S JOIN Student St ON S.person_ID = St.person_ID
+JOIN PersonInUni AS P ON S.person_ID = P.person_ID
+LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
 
 CREATE TRIGGER InsertGrad
 ON GradPerson
 INSTEAD OF INSERT
-AS BEGIN
-  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+AS
+BEGIN
+IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
     INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
-  IF NOT EXISTS(SELECT * FROM Student WHERE person_ID IN (SELECT person_ID FROM inserted))
+IF NOT EXISTS(SELECT * FROM Student WHERE person_ID IN (SELECT person_ID FROM inserted))
     INSERT INTO Student SELECT i.person_ID, i.student_ID, i.admission_date, i.major, i.minor FROM inserted i;
-  INSERT INTO Graduate SELECT i.person_ID, i.grad_date FROM inserted i;
+INSERT INTO Graduate SELECT i.person_ID, i.grad_date FROM inserted i;
 END;
 
 
 CREATE VIEW ProfessorPerson AS
 SELECT P.person_ID, P.person_name, P.person_address, A.zip, A.city_name, A.state_name, P.phone, P.email, S.specialisation
 FROM Professor AS S JOIN PersonInUni AS P ON S.person_ID = P.person_ID
-  LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
+LEFT OUTER JOIN Address A ON P.person_address = A.person_address;
 
 CREATE TRIGGER InsertProfessor
 ON ProfessorPerson
 INSTEAD OF INSERT
-AS BEGIN
-  IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
+AS
+BEGIN
+IF NOT EXISTS(SELECT * FROM PersonInUni WHERE person_ID IN (SELECT person_ID FROM inserted))
     INSERT INTO PersonInUni SELECT i.person_ID, i.person_name, i.person_address, i.phone, i.email FROM inserted i;
-  INSERT INTO Professor SELECT i.person_ID, i.specialisation FROM inserted i;
+INSERT INTO Professor SELECT i.person_ID, i.specialisation FROM inserted i;
 END;
 
 
@@ -460,10 +470,11 @@ FROM Research_Lab AS S JOIN Laboratory AS P ON S.Rlab_name = P.lab_name;
 CREATE TRIGGER InsertResearchLab
 ON ResearchLab
 INSTEAD OF INSERT
-AS BEGIN
-  IF NOT EXISTS(SELECT lab_name, school_name FROM Laboratory INTERSECT (SELECT lab_name, school_name FROM inserted))
+AS
+BEGIN
+IF NOT EXISTS(SELECT lab_name, school_name FROM Laboratory INTERSECT (SELECT lab_name, school_name FROM inserted))
     INSERT INTO Laboratory SELECT i.lab_name, i.school_name, i.location FROM inserted i;
-  INSERT INTO Research_Lab SELECT i.lab_name, i.school_name, i.type FROM inserted i;
+INSERT INTO Research_Lab SELECT i.lab_name, i.school_name, i.type FROM inserted i;
 END;
 
 
@@ -474,74 +485,9 @@ FROM Teaching_Lab AS S JOIN Laboratory AS P ON S.Tlab_name = P.lab_name;
 CREATE TRIGGER InsertTeachingLab
 ON TeachingLab
 INSTEAD OF INSERT
-AS BEGIN
-  IF NOT EXISTS(SELECT lab_name, school_name FROM Laboratory INTERSECT (SELECT lab_name, school_name FROM inserted))
+AS
+BEGIN
+IF NOT EXISTS(SELECT lab_name, school_name FROM Laboratory INTERSECT (SELECT lab_name, school_name FROM inserted))
     INSERT INTO Laboratory SELECT i.lab_name, i.school_name, i.location FROM inserted i;
-  INSERT INTO Teaching_Lab SELECT i.lab_name, i.school_name, i.purpose FROM inserted i;
+INSERT INTO Teaching_Lab SELECT i.lab_name, i.school_name, i.purpose FROM inserted i;
 END;
-
---Insert State, City, and Addresses--
-INSERT INTO State VALUES ('Singapore');
-INSERT INTO City VALUES ('Singapore' , 'Singapore');
-INSERT INTO Address(person_address, zip) VALUES ('445 Clementi Ave 3 #01-173' , '120445');
-INSERT INTO Address(person_address, zip) VALUES ('Block 26 Ayer Rajah Crescent 03-08', '139944');
-INSERT INTO Address(person_address, zip) VALUES ('179 River Valley Road #05-13 River Valley Building', '179033');
-INSERT INTO Address(person_address, zip) VALUES ('1002 Jalan Bukit Merah #02-01/03' , '159456');
-INSERT INTO Address(person_address, zip) VALUES ('20 Upper Circular Road #03-06A The Riverwalk' , '058416');
-INSERT INTO Address(person_address, zip) VALUES ('101 Thomson Road #07-02 UNITED SQUARE' , '307591');
-INSERT INTO Address(person_address, zip) VALUES ('133 New Bridge Road 12-07 Chinatown Point' , '059413');
-INSERT INTO Address(person_address, zip) VALUES ('3 Shenton Way #10-05 SHENTON HOUSE' , '068805');
-INSERT INTO Address(person_address, zip) VALUES ('19 Kim Keat Road #02-08 Fu Tsu Building' , '328804');
-INSERT INTO Address(person_address, zip) VALUES ('180 Clemenceau Avenue #06-01 HAW PAR CENTRE' , '239922');
-INSERT INTO Address(person_address, zip) VALUES ('#01-1195 , Blk 12 Toa Payoh Ind Pk Lor 8' , '319064');
-INSERT INTO Address(person_address, zip) VALUES ('460 Alexandra Road #38-00 Psa Building' , '119963');
-INSERT INTO Address(person_address, zip) VALUES ('110A Killiney Road TAI WAH BUILDING' , '239549');
-INSERT INTO Address(person_address, zip) VALUES ('317 Outram Road B1-23 Holiday Inn Atrium' , '169075');
-INSERT INTO Address(person_address, zip) VALUES ('1 Hougang Street 91 #01-41 HOUGANG FESTIVAL MARKET' , '538692');
-INSERT INTO Address(person_address, zip) VALUES ('620A, Lor 1 Toa Payoh' , '319762');
-INSERT INTO Address(person_address, zip) VALUES ('20 Ayer Rajah Crescent #04-04 TECHNOPRENEUR CENTRE' , '139964');
-INSERT INTO Address(person_address, zip) VALUES ('455 Hougang Ave 10 #08-449', '530455');
-
---Insert Stakeholders--
-INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
-VALUES ('S7756201I', 'Long Zi', '445 Clementi Ave 3 #01-173', '6567755182', 'lozi0058@e.ntu.edu.sg', 'public');
-
-INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
-VALUES ('S6674993I', 'Zhi Duan', 'Block 26 Ayer Rajah Crescent 03-08', '6567772170', 'zhid0122@e.ntu.edu.sg', 'government');
-
-INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
-VALUES ('S6575203I', 'Jiahao Zheng', '179 River Valley Road #05-13 River Valley Building', '6563380863', 'jiaz0502@e.ntu.edu.sg', 'industry partners');
-
-INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
-VALUES ('S9221012D', 'Low Zhengyuan', '455 Hougang Ave 10 #08-449', '6593217765', 'tanz0101@e.ntu.edu.sg', 'public');
-
-INSERT INTO StakeholderPerson(person_ID, person_name, person_address, phone, email, domain)
-VALUES ('S7088201C', 'Lee Kong Nam', '455 Hougang Ave 10 #08-449', '6581216626', 'lkn@finfund.edu.sg', 'funding agency');
-
-
---Insert Person In School--
-INSERT INTO Person_In_School VALUES('S9534183H', 'School of Civil and Environmental Engineering');
-INSERT INTO Person_In_School VALUES('S9434566H', 'School of Chemical and Biomedical Engineering');
-INSERT INTO Person_In_School VALUES('S9534185H','School of Physical and Mathematical Sciences');
-INSERT INTO Person_In_School VALUES ('S9534182H', 'School of Computer Science and Engineering');
-INSERT INTO Person_In_School VALUES ('S9438012H', 'School of Computer Science and Engineering');
-INSERT INTO Person_In_School VALUES ('S9310372A', 'School of Computer Science and Engineering');
-INSERT INTO Person_In_School VALUES ('S9845371C', 'School of Materials Science and Engineering');
-INSERT INTO Person_In_School VALUES ('S9811102A', 'School of Chemical and Biomedical Engineering');
-INSERT INTO Person_In_School VALUES ('S9822170Z', 'School of Chemical and Biomedical Engineering');
-INSERT INTO Person_In_School VALUES ('S8945371A', 'School of Computer Science and Engineering');
-INSERT INTO Person_In_School VALUES ('S8525200Z', 'School of Computer Science and Engineering');
-INSERT INTO Person_In_School VALUES ('S8809791A', 'School of Computer Science and Engineering');
-INSERT INTO Person_In_School VALUES ('S6878903I', 'School of Computer Science and Engineering');
-INSERT INTO Person_In_School VALUES ('S7255001I', 'School of Materials Science and Engineering');
-INSERT INTO Person_In_School VALUES ('S6808102I', 'School of Chemical and Biomedical Engineering');
-
-
---UPDATE Teaching_Lab purposes--
-UPDATE Teaching_Lab SET purpose = 'Software' WHERE Tlab_name LIKE '%Software%';
-UPDATE Teaching_Lab SET purpose = 'Hardware' WHERE Tlab_name LIKE '%Hardware%';
-
---UPDATE Research_Lab types--
-UPDATE Research_Lab SET type = 'R&D' WHERE Rlab_name IN ('Cyber Security Lab', 'Parallel & Distributed Computing Lab', 'Computational Intelligence Lab', 'Hardware & Embedded Systems Lab', 'Computer Networks & Communications Lab');
-UPDATE Research_Lab SET type = 'Data Analytics' WHERE Rlab_name IN ('Biomedical Informatics Lab', 'Data Management & Analytics Lab');
-UPDATE Research_Lab SET type = 'Applied' WHERE Rlab_name IN ('Multimedia & Interactive Computing Lab');

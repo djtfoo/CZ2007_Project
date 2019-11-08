@@ -22,6 +22,16 @@ FROM Person_In_School
 GROUP BY person_ID
 HAVING COUNT(school_name) > 1;
 
+--Have a Graduate who did more than 1 research, assigned to more than 1 prof, and assigned to more than 1 lab--
+INSERT INTO Research VALUES('Artificial heart', 'S7255001I', 'S9534185H');
+INSERT INTO Grad_Assigned_RLab VALUES('S9534185H', 'Biochemistry Laboratory 1', 'School of Chemical and Biomedical Engineering');
+INSERT INTO Grad_Assigned_RLab VALUES('S9534185H', 'Biomedical Informatics Lab', 'School of Computer Science and Engineering');
+
+--Have an Undergraduate who did not attend only 1 of his experiments--
+UPDATE Lab_Experiment SET attendance = '0' WHERE experiment_date = '2019-10-22' AND person_ID = 'S9811102A'
+
+SELECT * FROM Technical_Staff
+
 SELECT * FROM Course_Taught ORDER BY professor_person_ID
 SELECT * FROM Class ORDER BY person_ID
 SELECT * FROM ProfessorPerson

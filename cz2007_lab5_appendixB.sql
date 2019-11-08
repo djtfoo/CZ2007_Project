@@ -47,11 +47,10 @@ AND E.school_name = 'School of Computer Science and Engineering'
 --Query 6: Find all Undergraduates who have not attended at least one laboratory experiments.
 SELECT P.person_ID, P.person_name
 FROM UndergradPerson P
-WHERE EXISTS(
-	SELECT L.person_ID
-	FROM Lab_Experiment	L
-	WHERE L.person_ID = P.person_ID
-	AND L.attendance = 0);
+WHERE EXISTS( SELECT L.person_ID
+				FROM Lab_Experiment	L
+				WHERE L.person_ID = P.person_ID
+				AND L.attendance = 0);
 
 SELECT * FROM Lab_Experiment ORDER BY person_ID
 
@@ -61,23 +60,3 @@ FROM Research R, Course_Taught T, GradPerson P
 WHERE P.person_ID = R.graduate_person_ID
 AND R.graduate_person_ID = T.student_person_ID
 AND T.date_taught BETWEEN '2019-08-12' AND '2019-11-15';
-
-
-SELECT * FROM TechStaffPerson
-
-SELECT * FROM Research ORDER BY graduate_person_ID
-SELECT * FROM Grad_Assigned_RLab ORDER BY person_ID
-SELECT * FROM GradPerson
-
-
-SELECT * FROM Graduate;
-SELECT * FROM Research;
-SELECT * FROM Professor
-SELECT * FROM Grad_Assigned_RLab
-INSERT INTO Research VALUES('Artificial heart', 'S7255001I', 'S9534185H');
-INSERT INTO Grad_Assigned_RLab VALUES('S9534185H', 'Biochemistry Laboratory 1', 'School of Chemical and Biomedical Engineering');
-INSERT INTO Grad_Assigned_RLab VALUES('S9534185H', 'Biomedical Informatics Lab', 'School of Computer Science and Engineering');
-
-
-UPDATE Lab_Experiment SET attendance = '0' WHERE experiment_date = '2019-10-22' AND person_ID = 'S9811102A'
-SELECT * FROM Technical_Staff
